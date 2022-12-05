@@ -39,10 +39,10 @@ def interp(
         Threshold to use on `weights` so that pixels where
         `weight[i, j] < weight_cutoff` have phase values replaced by
         an interpolated value.
-        If `weight_cutoff = 0` (default), only pixels with exactly 0
-        weight are replaced with interpolated value, and the rest are kept.
-        If `weight_cutoff = 1`, All pixels are replaced with a smoothed version
-        of the surrounding pixels.
+        If `weight_cutoff = 0` (default),  All pixels are replaced with a
+        smoothed version of the surrounding pixels.
+        If `weight_cutoff = 1`, only pixels with exactly weight=1
+        are kept, and the rest are replaced with an interpolated value.
     alpha : float (optional)
         hyperparameter controlling the weight of PS in interpolation: smaller
         alpha means more weight is assigned to PS closer to the center pixel.
@@ -106,6 +106,10 @@ def interp(
 def _interp_inner_loop(
     ifg, weights, weight_cutoff, num_neighbors, alpha, indices, r0, c0, interpolated_ifg
 ):
+    if weights[r0, c0] >= weight_cutoff:
+        interpolated_ifg[r0, c0] = ifg[r0, c0]
+        return
+
     nrow, ncol = weights.shape
     nindices = len(indices)
     counter = 0
@@ -118,7 +122,7 @@ def _interp_inner_loop(
         r = r0 + idx[0]
         c = c0 + idx[1]
 
-        if (r >= 0) and (r < nrow) and (c >= 0) and (c < ncol) and weights[r, c] > weight_cutoff:
+        if (r >= 0) and (r < nrow) and (c >= 0) and (c < ncol) and weights[r, c] >= weight_cutoff:
             # calculate the square distance to the center pixel
             r2[counter] = idx[0] ** 2 + idx[1] ** 2
 
