@@ -17,4 +17,9 @@ The implementation is very basic and in need of improvement.
 - chen_interp_v2 has changes suggested by Liang Yu (JPL). This works faster when interpolating small examples,
   but it kills the kernel when testing over more complex cases. I think the issue lies on how the sample,
   distances are being stored. It creates a growing array that probably becomes too large when interpolating 
-  using a large sampling radius. 
+  using a large sampling radius.
+
+import matplotlib.pyplot as plt
+- Latest improvements added by Scott Staniewicz (JPL) under dev/interp_numba.py.
+  Examples are shown in both test jupyter notebooks.
+  Numba and pymp are required.
