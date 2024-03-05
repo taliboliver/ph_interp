@@ -9,8 +9,8 @@ import pymp
 def interp(
     ifg: np.ndarray,
     weights: np.ndarray,
-    num_neighbors: int,
-    max_radius: int,
+    num_neighbors: int = 20,
+    max_radius: int = 51,
     min_radius: int = 0,
     alpha: float = 0.75,
     weight_cutoff: float = 0.0,
@@ -33,8 +33,11 @@ def interp(
         number of nearest PS pixels used for interpolation
         num_neighbors = 20 by default
     max_radius : int (optional)
-        maximum radius (in pixel) for PS searching
+        maximum radius (in pixels) for PS searching
         max_radius = 51 by default
+    min_radius : int (optional)
+        minimum radius (in pixels) for PS searching
+        max_radius = 0 by default
     alpha : float (optional)
         hyperparameter controlling the weight of PS in interpolation: smaller
         alpha means more weight is assigned to PS closer to the center pixel.
