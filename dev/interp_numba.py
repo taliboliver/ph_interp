@@ -82,79 +82,68 @@ def interp(
     if np.any(weights.astype(np.float32) < 0):
         warnings.warn("weights array has negative values. Clipping to 0.")
     # Make shared versions of the input arrays to avoid copying in each thread
-    weights_shared = pymp.shared.array(weights.shape, dtype=np.float32)
-    weights_shared[:] = np.clip(weights.astype(np.float32), 0, 1)
+    weights_float = np.clip(weights.astype(np.float32), 0, 1)
 
-    # Make shared versions of the input arrays to avoid copying in each thread
-    ifg_shared = pymp.shared.array(ifg.shape, dtype=np.complex64)
-    ifg_shared[:] = ifg[:]
-
-    # Make shared output array
-    interpolated_ifg = pymp.shared.array((nrow, ncol), dtype=np.complex64)
+    interpolated_ifg = np.zeros((nrow, ncol), dtype=np.complex64)
 
     indices = np.array(_get_circle_idxs(max_radius, min_radius=min_radius))
-    indices_arr = pymp.shared.array(indices.shape, dtype=indices.dtype)
-    indices_arr[:] = indices
 
-    with pymp.Parallel(n_workers) as p:
-        for idx in p.range(nrow * ncol):
-            # convert linear idx to row, col
-            r0, c0 = np.unravel_index(idx, (nrow, ncol))
-            _interp_inner_loop(
-                ifg_shared,
-                weights_shared,
-                weight_cutoff,
-                num_neighbors,
-                alpha,
-                indices_arr,
-                r0,
-                c0,
-                interpolated_ifg,
-            )
+    _interp_loop(
+        ifg,
+        weights_float,
+        weight_cutoff,
+        num_neighbors,
+        alpha,
+        indices,
+        interpolated_ifg,
+    )
     return interpolated_ifg
 
 
-@numba.njit
-def _interp_inner_loop(
-    ifg, weights, weight_cutoff, num_neighbors, alpha, indices, r0, c0, interpolated_ifg
+@numba.njit(parallel=True)
+def _interp_loop(
+    ifg, weights, weight_cutoff, num_neighbors, alpha, indices, interpolated_ifg
 ):
-    if weights[r0, c0] >= weight_cutoff:
-        interpolated_ifg[r0, c0] = ifg[r0, c0]
-        return
-
     nrow, ncol = weights.shape
     nindices = len(indices)
-    counter = 0
-    csum = 0.0 + 0j
-    r2 = np.zeros(num_neighbors, dtype=np.float64)
-    cphase = np.zeros(num_neighbors, dtype=np.complex128)
+    for r0 in numba.prange(nrow):
+        # convert linear idx to row, col
+        for c0 in range(ncol):
+            if weights[r0, c0] >= weight_cutoff:
+                interpolated_ifg[r0, c0] = ifg[r0, c0]
+                continue
 
-    for i in range(nindices):
-        idx = indices[i]
-        r = r0 + idx[0]
-        c = c0 + idx[1]
+            csum = 0.0 + 0j
+            counter = 0
+            r2 = np.zeros(num_neighbors, dtype=np.float64)
+            cphase = np.zeros(num_neighbors, dtype=np.complex128)
 
-        if (
-            (r >= 0)
-            and (r < nrow)
-            and (c >= 0)
-            and (c < ncol)
-            and weights[r, c] >= weight_cutoff
-        ):
-            # calculate the square distance to the center pixel
-            r2[counter] = idx[0] ** 2 + idx[1] ** 2
+            for i in range(nindices):
+                idx = indices[i]
+                r = r0 + idx[0]
+                c = c0 + idx[1]
 
-            cphase[counter] = np.exp(1j * np.angle(ifg[r, c]))
-            counter += 1
-            if counter >= num_neighbors:
-                break
+                if (
+                    (r >= 0)
+                    and (r < nrow)
+                    and (c >= 0)
+                    and (c < ncol)
+                    and weights[r, c] >= weight_cutoff
+                ):
+                    # calculate the square distance to the center pixel
+                    r2[counter] = idx[0] ** 2 + idx[1] ** 2
 
-    # TODO : why use the "counter - 1" here to normalize?
-    r2_norm = (r2[counter - 1] ** alpha) / 2
-    for i in range(counter):
-        csum += np.exp(-r2[i] / r2_norm) * cphase[i]
+                    cphase[counter] = np.exp(1j * np.angle(ifg[r, c]))
+                    counter += 1
+                    if counter >= num_neighbors:
+                        break
 
-    interpolated_ifg[r0, c0] = np.abs(ifg[r0, c0]) * np.exp(1j * np.angle(csum))
+            # TODO : why use the "counter - 1" here to normalize?
+            r2_norm = (r2[counter - 1] ** alpha) / 2
+            for i in range(counter):
+                csum += np.exp(-r2[i] / r2_norm) * cphase[i]
+
+            interpolated_ifg[r0, c0] = np.abs(ifg[r0, c0]) * np.exp(1j * np.angle(csum))
 
 
 @numba.njit
