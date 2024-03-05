@@ -17,12 +17,12 @@ def interp(
     n_workers: int = 5,
 ):
     """Persistent scatterer interpolation.
-    
+
     Parameters
     ----------
     ifg : np.ndarray, 2D complex array
         wrapped interferogram to interpolate
-    weights : 2D boolean array 
+    weights : 2D boolean array
         Array of weights from 0 to 1 indicating how strongly to weigh
         the ifg values when interpolating.
         A special case of this is a PS mask where
@@ -63,12 +63,15 @@ def interp(
 
     nrow, ncol = weights.shape
 
-
-    if np.all(np.logical_or(np.logical_or(weights == 0, weights == 1), np.logical_or(weights == True, weights == False))):
+    if np.all(
+        np.logical_or(
+            np.logical_or(weights == 0, weights == 1),
+            np.logical_or(weights == True, weights == False),
+        )
+    ):
         print("Binary weights, using PS-like interpolation.")
     else:
         print("Range of values as weights, using weight_cutoff =", weight_cutoff)
-
 
     # Ensure weights are between 0 and 1
     if np.any(weights.astype(np.float32) > 1):
@@ -79,11 +82,9 @@ def interp(
     weights_shared = pymp.shared.array(weights.shape, dtype=np.float32)
     weights_shared[:] = np.clip(weights.astype(np.float32), 0, 1)
 
-
     # Make shared versions of the input arrays to avoid copying in each thread
     ifg_shared = pymp.shared.array(ifg.shape, dtype=np.complex64)
     ifg_shared[:] = ifg[:]
-
 
     # Make shared output array
     interpolated_ifg = pymp.shared.array((nrow, ncol), dtype=np.complex64)
@@ -111,7 +112,9 @@ def interp(
 
 
 @numba.njit
-def _interp_inner_loop(ifg, weights, weight_cutoff, num_neighbors, alpha, indices, r0, c0, interpolated_ifg):
+def _interp_inner_loop(
+    ifg, weights, weight_cutoff, num_neighbors, alpha, indices, r0, c0, interpolated_ifg
+):
     if weights[r0, c0] >= weight_cutoff:
         interpolated_ifg[r0, c0] = ifg[r0, c0]
         return
@@ -128,7 +131,13 @@ def _interp_inner_loop(ifg, weights, weight_cutoff, num_neighbors, alpha, indice
         r = r0 + idx[0]
         c = c0 + idx[1]
 
-        if (r >= 0) and (r < nrow) and (c >= 0) and (c < ncol) and weights[r, c] >= weight_cutoff:
+        if (
+            (r >= 0)
+            and (r < nrow)
+            and (c >= 0)
+            and (c < ncol)
+            and weights[r, c] >= weight_cutoff
+        ):
             # calculate the square distance to the center pixel
             r2[counter] = idx[0] ** 2 + idx[1] ** 2
 
