@@ -1,9 +1,12 @@
 # Phase interpolation algorithm
-This small repository contains 2 version of the phase unwrapping algorithm under dev/phase_inter.py. 
-The two implementations are based on Chen, J., Zebker, H. A., & Knight, R. (2015). 
-"A persistent scatterer interpolation for retrieving accurate ground deformation over InSAR-decorrelated agricultural fields." 
+This small repository contains phase interpolation examples based on the work from: 
+- Chen, J., Zebker, H. A., & Knight, R. (2015). "A persistent scatterer interpolation
+for retrieving accurate ground deformation over InSAR-decorrelated agricultural fields." 
 Geophysical Research Letters, 42(21), 9294–9301. https://doi.org/10.1002/2015GL065031
-
+- Wang, K., & Chen, J. (2022). "Accurate persistent scatterer identification based on
+phase similarity of radar pixels".
+IEEE Transactions on Geoscience and Remote Sensing, 1–1. https://doi.org/10.1109/TGRS.2022.3210868
+- And implementations from: https://github.com/UT-Radar-Interferometry-Group
 
 I set up two jupyter notebook examples: 
 - simple_test.ipynb 
